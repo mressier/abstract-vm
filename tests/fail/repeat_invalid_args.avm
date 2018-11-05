@@ -1,0 +1,8 @@
+push int8(16)
+rep int8(0)
+rep toto
+rep -1
+rep rep
+rep push
+rep 1234
+rep 0

@@ -1,0 +1,6 @@
+push int8(10)
+rep 3
+pop
+rep 5
+exit
+;;

@@ -1,0 +1,4 @@
+.tmp/
+abstract_vm
+CanonicalClassTemplate.cpp
+CanonicalClassTemplate.hpp

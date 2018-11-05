@@ -1,0 +1,8 @@
+push int8(10)
+rep 100
+hdump
+mul
+rep 50
+hdump
+exit
+;;

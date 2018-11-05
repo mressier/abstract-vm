@@ -1,0 +1,149 @@
+#!/bin/bash
+
+typeset -r ABSTRACT_VM_DIR="/Users/mressier/Documents/42Projects/abstractvm/"
+typeset -r AVM_NAME="abstract_vm"
+typeset -r AVM="${ABSTRACT_VM_DIR}${AVM_NAME}"
+typeset -r TEST_AVM_DIR="${ABSTRACT_VM_DIR}tests/"
+
+typeset -r EXP_FAIL=1
+typeset -r EXP_SUCC=0
+
+typeset -r RED_COLOR="\033[31m"
+typeset -r GREEN_COLOR="\033[32m"
+typeset -r RESET_COLOR="\033[0m"
+
+#RESUME
+typeset -i NB_TESTS=0
+typeset -i NB_TESTS_FAIL=0
+typeset -i NB_TESTS_SUCCESS=0
+
+# OPTIONS
+typeset -r AVAILABLE_OPTIONS="vh"
+typeset -i VERBOSE_MODE=0
+
+error()
+{
+	echo -e "${RED_COLOR}OOUPS${RESET_COLOR}:" $*
+}
+
+success()
+{
+	echo -e "${GREEN_COLOR}OK${RESET_COLOR}:" $*
+}
+
+expect_avm_fail()
+{
+	(($# > 1)) || error "invalid nb of arguments on $0"
+
+	typeset -i EXIT_STATUS=$1 ; shift
+	if ((${EXIT_STATUS} == 0))
+	then
+		((NB_TESTS_FAIL++))
+		error ${AVM_NAME} $* " : test doesn't fail as expected"
+		return 1
+	fi
+	((NB_TESTS_SUCCESS++))
+	success ${AVM_NAME} $*
+	return 0
+}
+
+expect_avm_success()
+{
+	(($# > 1)) || error "invalid nb of arguments on $0"
+
+	typeset -i EXIT_STATUS=$1 ; shift
+	if ((${EXIT_STATUS} != 0))
+	then
+		((NB_TESTS_FAIL++))
+		error ${AVM_NAME} $* " : test doesn't success as expected"
+		return 1
+	fi
+	((NB_TESTS_SUCCESS++))
+	success ${AVM_NAME} $*
+	return 0
+}
+
+avm_exec_test()
+{
+	(($# > 1)) || error "invalid nb of arguments on $0"
+
+	typeset -i TEST_FOR_FAIL=$1 ; shift
+
+	((NB_TESTS++))
+	if ((${VERBOSE_MODE} > 1))
+	then
+		${AVM} -v $*
+	elif ((${VERBOSE_MODE}))
+	then
+		${AVM} $*
+	else
+		${AVM} $* 2>&- 1>&-
+	fi
+	typeset -i EXIT_STATUS=$?
+
+	((${TEST_FOR_FAIL})) && expect_avm_fail ${EXIT_STATUS} $*
+	((${TEST_FOR_FAIL})) || expect_avm_success ${EXIT_STATUS} $*
+}
+
+test_options()
+{
+	avm_exec_test ${EXP_FAIL} -h
+	avm_exec_test ${EXP_FAIL} -v -h
+	avm_exec_test ${EXP_FAIL} -vh
+	avm_exec_test ${EXP_FAIL} -h
+	avm_exec_test ${EXP_FAIL} toto
+	avm_exec_test ${EXP_FAIL} -v toto
+}
+
+test_success_files()
+{
+	typeset -r FILES="${TEST_AVM_DIR}success/*.avm"
+
+	for filename in ${FILES}
+	do
+		avm_exec_test ${EXP_SUCC} ${filename}
+	done
+}
+
+test_fail_files()
+{
+	typeset -r FILES="${TEST_AVM_DIR}fail/*.avm"
+
+	for filename in ${FILES}
+	do
+		avm_exec_test ${EXP_FAIL} ${filename}
+	done
+}
+
+usage()
+{
+	echo -e "[usage] ./avm_test [-v[v]h]"
+	echo -e "\t-v: print the stdout and stderr of the abstract vm execution"
+	echo -e "\t-vv: same as -v + set abstravm in verbose mode (abstract_vm -v [files])"
+	echo -e "\t-h: display help"
+}
+
+## GET SCRIPT OPTIONS
+
+while getopts ${AVAILABLE_OPTIONS} arg; do
+	case $arg in
+		v)
+			((VERBOSE_MODE++))
+			;;
+		*)
+			usage
+			exit 0
+			;;
+	esac
+done
+
+test_options
+test_success_files
+test_fail_files
+
+if ((${NB_TESTS_FAIL} > 0))
+then
+	echo -e "${RED_COLOR}RESULT : [${NB_TESTS_SUCCESS}/${NB_TESTS}]${RESET_COLOR}"
+else
+	echo -e "${GREEN_COLOR}YOU PASS ALL THE ${NB_TESTS} TESTS WITH SUCCESS! ${RESET_COLOR}"
+fi
